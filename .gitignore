@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.vscode/
+.claude/
+*.log
+esp32/**/build/
+esp32/**/secrets.h

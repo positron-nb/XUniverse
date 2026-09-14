@@ -1,0 +1,271 @@
+/* One family, three weights. Numbers use Inter's tabular figures so columns of
+   readings align like an instrument panel. */
+@import '@fontsource/inter/300.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+
+:root {
+  --ground: #0a0a0b;
+  /* Opacity hierarchy: title > value > label > unit/trace. */
+  --ink: #e2ddd4;
+  --ink-value: rgba(226, 221, 212, 0.86);
+  --ink-dim: rgba(226, 221, 212, 0.7);
+  --ink-faint: rgba(226, 221, 212, 0.5);
+  --amber: #c9914a;
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace; /* developer panels only */
+  --margin: clamp(20px, 3vw, 48px);
+  /* Type scale follows the viewport, clamped so it stays legible and restrained. */
+  --fs-label: clamp(10.5px, 0.78vw, 12.5px);
+  --fs-value: clamp(12px, 0.9vw, 14.5px);
+  --fs-title: clamp(13px, 1.05vw, 17px);
+  --fs-sub: clamp(9.5px, 0.72vw, 11.5px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+#scene:active { cursor: grabbing; }
+body.presentation #scene { cursor: none; }
+
+#ui { position: fixed; inset: 0; pointer-events: none; }
+
+/* ── Corner typography ──────────────────────────────────────────────── */
+.corner {
+  position: absolute;
+  font-size: var(--fs-label);
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  text-shadow: 0 0 14px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.8);
+  transition: opacity 1.6s ease;
+}
+.corner.tl { top: var(--margin); left: var(--margin); }
+.corner.tr { top: var(--margin); right: var(--margin); text-align: right; }
+.corner.bl { bottom: var(--margin); left: var(--margin); }
+.corner.br { bottom: var(--margin); right: var(--margin); text-align: right; }
+
+/* Wide tracking needs optical compensation: trailing space is trimmed with a
+   negative right margin so the wordmark's visual edge aligns with the margin. */
+.title { font-weight: 500; font-size: var(--fs-title); letter-spacing: 0.46em; margin-right: -0.46em; color: var(--ink); }
+.subtitle { margin-top: 0.95em; font-weight: 300; font-size: var(--fs-sub); letter-spacing: 0.38em; color: var(--ink-dim); }
+
+/* Readouts: label · value · unit · trace, baseline-aligned in fixed columns. */
+.readout {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  column-gap: 1.35em;
+  row-gap: 0.95em;
+  align-items: center;
+}
+.readout.mirror { grid-template-columns: auto auto auto; justify-content: end; }
+.readout .k { color: var(--ink-faint); letter-spacing: 0.22em; }
+.readout .v {
+  font-size: var(--fs-value);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'case' 1;
+  color: var(--ink-value);
+  text-align: right;
+  text-transform: none;
+  min-width: 6.2ch;
+}
+.readout .v .u { margin-left: 0.4em; font-size: 0.78em; font-weight: 300; color: var(--ink-faint); letter-spacing: 0.04em; }
+.spark { width: clamp(34px, 3vw, 52px); height: 11px; display: block; opacity: 0.9; }
+@media (max-height: 560px), (max-width: 760px) { .spark { display: none; } .readout { grid-template-columns: auto auto; } }
+
+.status { display: inline-flex; align-items: center; gap: 0.8em; }
+.dot { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--ink-dim); transition: all 0.8s ease; }
+.dot.on { background: var(--amber); border-color: var(--amber); }
+.corner.tr[data-state='lost'] .status { color: var(--ink); }
+
+.mode {
+  margin-top: 1.5em;
+  font-weight: 400;
+  letter-spacing: 0.32em;
+  color: var(--amber);
+  opacity: 0.9;
+  transition: opacity 0.9s ease;
+}
+
+.hint { margin-top: 1em; font-size: 0.86em; letter-spacing: 0.16em; color: var(--ink-faint); }
+
+/* Presentation: branding, minimal telemetry and the simulation — nothing else.
+   The hardware status stays only when a real board is connected. */
+body.presentation .hint { display: none; }
+body.presentation .corner.tr:not([data-state='live']) { opacity: 0 !important; }
+
+body.hide-ui .corner, body.hide-ui .debug { opacity: 0 !important; }
+
+/* ── Intro ─────────────────────────────────────────────────────────── */
+.intro {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  transition: opacity 2.2s ease;
+  pointer-events: auto;
+}
+.intro .l1, .intro .l2 {
+  opacity: 0;
+  text-transform: uppercase;
+  transition: opacity 1.4s ease, letter-spacing 3.2s cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+.intro .l1 { font-weight: 400; font-size: 13px; letter-spacing: 0.34em; padding-left: 0.34em; color: var(--ink); }
+.intro .l2 { margin-top: 12px; font-weight: 300; font-size: 9.5px; letter-spacing: 0.3em; padding-left: 0.3em; color: var(--ink-dim); }
+.intro.s1 .l1 { opacity: 0.9; letter-spacing: 0.52em; padding-left: 0.52em; }
+.intro.s2 .l2 { opacity: 1; letter-spacing: 0.4em; padding-left: 0.4em; }
+.intro.out { opacity: 0; pointer-events: none; }
+.intro.out .l1, .intro.out .l2 { opacity: 0; }
+
+/* ── Debug overlay (developer only) ────────────────────────────────── */
+.debug {
+  position: absolute;
+  top: calc(var(--margin) + 70px);
+  left: var(--margin);
+  width: min(470px, calc(100vw - 2 * var(--margin)));
+  max-height: calc(100vh - 2 * var(--margin) - 190px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 14px;
+  background: rgba(8, 8, 9, 0.78);
+  border: 1px solid rgba(217, 211, 202, 0.08);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.55;
+  color: rgba(226, 221, 212, 0.9);
+  white-space: pre;
+  pointer-events: auto;
+}
+.debug[hidden] { display: none; }
+body.presentation .debug { display: none; }
+
+/* ── Presentation captions ─────────────────────────────────────────── */
+.caption {
+  position: absolute;
+  left: 50%;
+  /* Sits above the corner readouts so it never collides with them. */
+  bottom: calc(var(--margin) + 128px);
+  transform: translate(-50%, 6px);
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  white-space: nowrap;
+  font-size: var(--fs-label);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  text-shadow: 0 0 14px rgba(0, 0, 0, 0.95);
+  opacity: 0;
+  transition: opacity 0.35s ease, transform 0.6s ease;
+}
+.caption.on { opacity: 1; transform: translate(-50%, 0); }
+.caption .c-src { color: var(--ink); }
+.caption .c-read, .caption .c-eff { font-size: 1.04em; letter-spacing: 0.03em; text-transform: none; font-variant-numeric: tabular-nums; }
+.caption .c-arrow { color: var(--amber); letter-spacing: 0; }
+.caption .c-eff { color: var(--ink-dim); }
+body.hide-ui .caption, body.outro-on .caption { opacity: 0; }
+
+/* ── Closing title ─────────────────────────────────────────────────── */
+.outro {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 2.4s ease;
+  text-shadow: 0 0 24px rgba(0, 0, 0, 0.9);
+}
+.outro.on { opacity: 1; }
+.outro .o1 { font-size: 22px; letter-spacing: 0.6em; padding-left: 0.6em; text-transform: uppercase; color: var(--ink); }
+.outro .o2 { margin-top: 14px; font-size: 12px; font-weight: 300; letter-spacing: 0.44em; padding-left: 0.44em; text-transform: uppercase; color: var(--ink-dim); }
+/* Secondary lines sit at the bottom, clear of the bright core. */
+.outro .o3, .outro .o4 { position: absolute; left: 0; right: 0; padding: 0 var(--margin); }
+.outro .o3 { bottom: calc(var(--margin) + 26px); font-size: 12px; letter-spacing: 0.14em; color: var(--ink-dim); }
+.outro .o4 { bottom: var(--margin); font-size: 11px; font-weight: 300; letter-spacing: 0.12em; color: var(--ink-faint); }
+.outro .o3, .outro .o4 { opacity: 0; transition: opacity 2s ease 1.6s; }
+.outro.on .o3, .outro.on .o4 { opacity: 1; }
+body.outro-on .corner { opacity: 0 !important; transition-delay: 0s !important; }
+
+/* ── Recording indicator (not part of the recorded canvas) ─────────── */
+.rec {
+  position: absolute;
+  top: var(--margin);
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rec[hidden] { display: none; }
+.rec::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #b5483a; }
+
+/* ── Tuning panel (developer only) ─────────────────────────────────── */
+.tuning {
+  position: absolute;
+  top: calc(var(--margin) + 70px);
+  right: var(--margin);
+  width: 340px;
+  max-height: calc(100vh - 2 * var(--margin) - 190px);
+  overflow: auto;
+  padding: 14px 16px;
+  background: rgba(8, 8, 9, 0.8);
+  border: 1px solid rgba(217, 211, 202, 0.1);
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  pointer-events: auto;
+}
+.tuning[hidden], body.presentation .tuning, body.hide-ui .tuning { display: none; }
+.t-head { font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink); margin-bottom: 10px; }
+.t-head span, .t-group span { letter-spacing: 0.05em; text-transform: none; color: var(--ink-faint); font-size: 10.5px; }
+.t-live { display: flex; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+.t-live b { font-weight: 400; color: var(--ink-dim); }
+.t-group { margin: 16px 0 6px; font-size: 10.5px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--amber); }
+.t-row { display: grid; grid-template-columns: 112px 1fr 56px; align-items: center; gap: 10px; padding: 3px 0; }
+.t-row output { font-family: var(--mono); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+.t-row input[type='range'] { width: 100%; accent-color: var(--amber); height: 14px; }
+.t-row input:disabled { opacity: 0.3; }
+.t-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+.t-buttons.end { margin-top: 16px; justify-content: flex-end; }
+.tuning button {
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: rgba(217, 211, 202, 0.06);
+  border: 1px solid rgba(217, 211, 202, 0.16);
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.tuning button:hover { border-color: var(--amber); }
+.t-status { min-height: 16px; font-size: 10.5px; color: var(--ink-faint); }
